@@ -1,4 +1,5 @@
 import 'package:cross_platform_app/features/auth/data/auth_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class LoginPage extends StatefulWidget {
@@ -51,6 +52,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final canUseApple = widget.authService.isAppleSignInAvailable;
+    final platformLabel = kIsWeb
+      ? 'Web'
+      : defaultTargetPlatform.name;
     final loginHint = canUseApple
         ? 'Melde dich mit Google oder Apple an.'
         : 'Melde dich mit Google an.';
@@ -79,6 +83,21 @@ class _LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
+                  if (kDebugMode) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Debug: Plattform=$platformLabel, Apple verfuegbar=${canUseApple ? 'ja' : 'nein'}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: _isLoading

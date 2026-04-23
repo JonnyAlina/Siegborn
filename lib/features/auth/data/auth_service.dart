@@ -61,31 +61,42 @@ class AuthService {
       return;
     }
 
-    final rawNonce = _generateNonce();
-    final nonce = _sha256OfString(rawNonce);
+    try {
+      final rawNonce = _generateNonce();
+      final nonce = _sha256OfString(rawNonce);
 
-    final appleCredential = await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: nonce,
-    );
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+      );
 
-    final identityToken = appleCredential.identityToken;
-    if (identityToken == null) {
-      throw const FirebaseAuthException(
-        code: 'missing-apple-identity-token',
-        message: 'Apple hat kein gueltiges Identity-Token geliefert.',
+      final identityToken = appleCredential.identityToken;
+      if (identityToken == null) {
+        throw FirebaseAuthException(
+          code: 'missing-apple-identity-token',
+          message: 'Apple hat kein gueltiges Identity-Token geliefert.',
+        );
+      }
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: identityToken,
+        rawNonce: rawNonce,
+      );
+
+      await _firebaseAuth.signInWithCredential(oauthCredential);
+    } on SignInWithAppleAuthorizationException catch (error) {
+      if (error.code == AuthorizationErrorCode.canceled) {
+        return;
+      }
+
+      throw FirebaseAuthException(
+        code: 'apple-sign-in-failed',
+        message: 'Apple Anmeldung fehlgeschlagen: ${error.message}',
       );
     }
-
-    final oauthCredential = OAuthProvider('apple.com').credential(
-      idToken: identityToken,
-      rawNonce: rawNonce,
-    );
-
-    await _firebaseAuth.signInWithCredential(oauthCredential);
   }
 
   Future<void> signOut() async {
