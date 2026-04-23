@@ -15,25 +15,14 @@ workflows:
         script: |
           flutter pub get
 
-      - name: Resolve iOS code signing
+      - name: Build iOS (no codesign)
         script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          xcode-project use-profiles
-
-      - name: Build iOS IPA
-        script: |
-          flutter build ipa --release --build-number=$BUILD_NUMBER
+          flutter build ios --release --no-codesign
 
     artifacts:
-      - build/ios/ipa/*.ipa
-      - build/ios/archive/*.xcarchive
+      - build/ios/iphoneos/Runner.app
 
     publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
-        submit_to_app_store: false
       email:
         recipients:
-          - notifications@crossplatformapp.dev
+          - leonhart.jonathan@gmail.com
