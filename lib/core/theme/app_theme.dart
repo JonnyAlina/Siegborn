@@ -1,0 +1,12 @@
+import 'package:flutter/material.dart';
+
+class AppTheme {
+  static ThemeData get light {
+    return ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0A7E8C)),
+      scaffoldBackgroundColor: const Color(0xFFF4F7F8),
+      useMaterial3: true,
+      appBarTheme: const AppBarTheme(centerTitle: true),
+    );
+  }
+}
