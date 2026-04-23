@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidNormalizedUsername(value) {
+      return value is string
+        && value.size() >= 3
+        && value.size() <= 20
+        && value.matches('^[a-z0-9_]+$');
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create, update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && (
+          !('username' in request.resource.data)
+          || (
+            request.resource.data.username is string
+            && request.resource.data.username.size() >= 3
+            && request.resource.data.username.size() <= 20
+          )
+        )
+        && (
+          !('username_normalized' in request.resource.data)
+          || isValidNormalizedUsername(request.resource.data.username_normalized)
+        );
+
+      allow delete: if isOwner(uid);
+    }
+
+    match /usernames/{normalized} {
+      allow read: if isSignedIn();
+
+      allow create, update: if isSignedIn()
+        && isValidNormalizedUsername(normalized)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.normalized == normalized
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 3
+        && request.resource.data.username.size() <= 20;
+
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

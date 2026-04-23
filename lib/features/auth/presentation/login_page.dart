@@ -1,4 +1,5 @@
 import 'package:cross_platform_app/features/auth/data/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -37,8 +38,12 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await action();
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Auth error: $e');
+      }
+
       setState(() {
-        _errorText = 'Fehler: $e';
+        _errorText = _toUserMessage(e);
       });
     } finally {
       if (mounted) {
@@ -47,6 +52,25 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     }
+  }
+
+  String _toUserMessage(Object error) {
+    if (error is AuthFlowException) {
+      return error.userMessage;
+    }
+
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'network-request-failed':
+          return 'Keine Internetverbindung. Bitte pruefe dein Netzwerk.';
+        case 'too-many-requests':
+          return 'Zu viele Versuche. Bitte warte kurz und versuche es erneut.';
+        default:
+          return 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.';
+      }
+    }
+
+    return 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.';
   }
 
   @override

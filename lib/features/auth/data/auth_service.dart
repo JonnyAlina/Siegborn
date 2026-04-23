@@ -7,6 +7,16 @@ import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+class AuthFlowException implements Exception {
+  const AuthFlowException({
+    required this.code,
+    required this.userMessage,
+  });
+
+  final String code;
+  final String userMessage;
+}
+
 class AuthService {
   AuthService({
     FirebaseAuth? firebaseAuth,
@@ -27,24 +37,51 @@ class AuthService {
       defaultTargetPlatform == TargetPlatform.macOS;
 
   Future<void> signInWithGoogle() async {
+    Future<void> signInWithCredential(GoogleAuthProvider provider) async {
+      try {
+        await _firebaseAuth.signInWithPopup(provider);
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'popup-closed-by-user') {
+          return;
+        }
+
+        throw const AuthFlowException(
+          code: 'google-sign-in-failed',
+          userMessage: 'Google Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
+        );
+      }
+    }
+
     if (kIsWeb) {
       final provider = GoogleAuthProvider();
-      await _firebaseAuth.signInWithPopup(provider);
+      await signInWithCredential(provider);
       return;
     }
 
-    final googleUser = await _googleSignIn!.signIn();
-    if (googleUser == null) {
-      return;
+    try {
+      final googleUser = await _googleSignIn!.signIn();
+      if (googleUser == null) {
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await _firebaseAuth.signInWithCredential(credential);
+    } on FirebaseAuthException {
+      throw const AuthFlowException(
+        code: 'google-sign-in-failed',
+        userMessage: 'Google Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
+      );
+    } catch (_) {
+      throw const AuthFlowException(
+        code: 'google-sign-in-failed',
+        userMessage: 'Google Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
+      );
     }
-
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    await _firebaseAuth.signInWithCredential(credential);
   }
 
   Future<void> signInWithApple() async {
@@ -57,7 +94,18 @@ class AuthService {
     appleProvider.addScope('name');
 
     if (kIsWeb) {
-      await _firebaseAuth.signInWithPopup(appleProvider);
+      try {
+        await _firebaseAuth.signInWithPopup(appleProvider);
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'popup-closed-by-user') {
+          return;
+        }
+
+        throw const AuthFlowException(
+          code: 'apple-sign-in-failed',
+          userMessage: 'Apple Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
+        );
+      }
       return;
     }
 
@@ -75,9 +123,9 @@ class AuthService {
 
       final identityToken = appleCredential.identityToken;
       if (identityToken == null) {
-        throw FirebaseAuthException(
+        throw const AuthFlowException(
           code: 'missing-apple-identity-token',
-          message: 'Apple hat kein gueltiges Identity-Token geliefert.',
+          userMessage: 'Apple Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
         );
       }
 
@@ -92,9 +140,19 @@ class AuthService {
         return;
       }
 
-      throw FirebaseAuthException(
+      throw const AuthFlowException(
         code: 'apple-sign-in-failed',
-        message: 'Apple Anmeldung fehlgeschlagen: ${error.message}',
+        userMessage: 'Apple Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
+      );
+    } on FirebaseAuthException {
+      throw const AuthFlowException(
+        code: 'apple-sign-in-failed',
+        userMessage: 'Apple Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
+      );
+    } catch (_) {
+      throw const AuthFlowException(
+        code: 'apple-sign-in-failed',
+        userMessage: 'Apple Anmeldung fehlgeschlagen. Bitte erneut versuchen.',
       );
     }
   }
