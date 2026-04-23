@@ -50,6 +50,11 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final canUseApple = widget.authService.isAppleSignInAvailable;
+    final loginHint = canUseApple
+        ? 'Melde dich mit Google oder Apple an.'
+        : 'Melde dich mit Google an.';
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -70,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Melde dich mit Google oder Apple an.',
+                    loginHint,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
@@ -83,13 +88,14 @@ class _LoginPageState extends State<LoginPage> {
                     label: const Text('Mit Google anmelden'),
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _isLoading
-                        ? null
-                        : () => _runAuth(widget.authService.signInWithApple),
-                    icon: const Icon(Icons.apple),
-                    label: const Text('Mit Apple ID anmelden'),
-                  ),
+                  if (canUseApple)
+                    OutlinedButton.icon(
+                      onPressed: _isLoading
+                          ? null
+                          : () => _runAuth(widget.authService.signInWithApple),
+                      icon: const Icon(Icons.apple),
+                      label: const Text('Mit Apple ID anmelden'),
+                    ),
                   if (_errorText != null) ...[
                     const SizedBox(height: 12),
                     Text(
